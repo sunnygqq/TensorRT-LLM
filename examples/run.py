@@ -93,7 +93,7 @@ def parse_arguments(args=None):
                         type=int,
                         help="Use beam search if num_beams >1",
                         default=1)
-    parser.add_argument('--temperature', type=float, default=0)
+    parser.add_argument('--temperature', type=float, default=1.0)
     parser.add_argument('--top_k', type=int, default=1)
     parser.add_argument('--top_p', type=float, default=0.0)
     parser.add_argument('--length_penalty', type=float, default=1.0)
@@ -319,8 +319,7 @@ def main(args):
                          lora_dir=args.lora_dir,
                          rank=runtime_rank,
                          debug_mode=args.debug_mode,
-                         debug_tensors_to_save=['layers.0.mlp_output','layers.1.mlp_output','layers.2.mlp_output'],
-                         lora_ckpt_source=args.lora_ckpt_source)
+                         lora_ckpt_source=args.lora_ckpt_source)#debug_tensors_to_save=['layers.0.mlp_output',]
     if not args.use_py_session:
         runner_kwargs.update(
             max_batch_size=len(batch_input_ids),

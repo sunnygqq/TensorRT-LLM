@@ -1,1 +1,0 @@
-python3 ../run.py --max_output_len=50 --engine_dir=gptj_engine --tokenizer_dir=/home/nvcntse/qgai/jingwei_station/gptj_model > run_log.log 2>&1 &
