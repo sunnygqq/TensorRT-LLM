@@ -982,6 +982,7 @@ inline __device__ void Logit_value_fma(
         V_vec_accum v_vec_ = mul<V_vec_accum, float, V_vec_m>(v_scale, v_vec);
         out = fma(logit, v_vec_, out);
     }
+#ifdef ENABLE_FP8
     else if constexpr (FP8_KV_CACHE)
     {
 #ifdef MMHA_FP8_SCALE_P_INSTEAD_OF_V
@@ -991,6 +992,7 @@ inline __device__ void Logit_value_fma(
         out = fma(logit, v_vec_, out);
 #endif // MMHA_FP8_SCALE_P_INSTEAD_OF_V
     }
+#endif
     else
     {
         out = fma(logit, v_vec, out);
@@ -1255,8 +1257,10 @@ __global__ void masked_multihead_attention_kernel(
     using Tk = typename kernel_type_t<T>::Type;
     // Use 8bit cache.
     static constexpr bool ENABLE_8BITS_CACHE = sizeof(Tcache) == 1;
+#ifdef ENABLE_FP8
     // FP8 KV Cache.
     static constexpr bool FP8_KV_CACHE = std::is_same<Tcache, __nv_fp8_e4m3>::value;
+#endif
     // INT8 KV Cache.
     static constexpr bool INT8_KV_CACHE = std::is_same<Tcache, int8_t>::value;
 
@@ -2272,7 +2276,7 @@ __global__ void masked_multihead_attention_kernel(
     // The partial outputs computed by each thread.
     V_vec_accum out;
     zero(out);
-
+#ifdef ENABLE_FP8
     // Loop over the timesteps to compute the partial outputs.
     if (is_valid_vi)
     {
@@ -2352,6 +2356,7 @@ __global__ void masked_multihead_attention_kernel(
             }
         }
     }
+#endif
 
     // Make sure we can overwrite the v cache if using cyclic kv cache.
     __syncthreads();

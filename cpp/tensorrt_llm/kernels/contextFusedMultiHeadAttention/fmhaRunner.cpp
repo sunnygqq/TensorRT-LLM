@@ -84,7 +84,7 @@ public:
         , sm(sm_)
     {
         TLLM_CHECK_WITH_INFO(
-            (sm == kSM_80 || sm == kSM_86 || sm == kSM_89 || sm == kSM_90), "Unsupported architecture");
+            (sm == kSM_80 || sm == kSM_86 || sm == kSM_87 || sm == kSM_89 || sm == kSM_90), "Unsupported architecture");
         TLLM_CHECK_WITH_INFO((mDataType == DATA_TYPE_FP16 || mDataType == DATA_TYPE_BF16), "Unsupported data type");
 
         pagedKVXmmaKernel = getPagedKVXMMAKernelsV2(mDataType, sm);
@@ -161,7 +161,7 @@ public:
         mLaunchParams.set_default_kernel_selection_params();
 
         const bool isSm90 = (sm == kSM_90);
-        const bool isSm8x = (sm == kSM_86 || sm == kSM_89);
+        const bool isSm8x = (sm == kSM_86 || sm == kSM_87 || sm == kSM_89);
         const bool isSm80 = (sm == kSM_80);
         if (isSm90 && mHeadSize <= 64 && s <= 256)
         {
@@ -662,7 +662,7 @@ bool FusedMHARunnerV2::isValid(int s) const
 // static function to check if fmha is supported when building plugins
 bool MHARunner::fmha_supported(const int headSize, const int sm)
 {
-    if (sm == kSM_80 || sm == kSM_86 || sm == kSM_89)
+    if (sm == kSM_80 || sm == kSM_86 || sm == kSM_87 || sm == kSM_89)
     {
         return (headSize == 16 || headSize == 32 || headSize == 40 || headSize == 64 || headSize == 80
             || headSize == 128 || headSize == 160 || headSize == 256);

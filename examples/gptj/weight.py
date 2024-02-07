@@ -668,7 +668,8 @@ def load_from_awq_gpt_j(tensorrt_llm_gpt_j: GPTJForCausalLM,
         "mlp.fc_in.bias",
         "mlp.fc_out.bias",
     ]
-
+    for key ,value in awq_gpt_j.items():
+        print(key)
     tensorrt_llm_model_gptj_block_names = [
         "input_layernorm.weight",
         "input_layernorm.bias",

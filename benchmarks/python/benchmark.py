@@ -240,7 +240,7 @@ def main(args):
     from bert_benchmark import BERTBenchmark
     from enc_dec_benchmark import EncDecBenchmark
     from gpt_benchmark import GPTBenchmark
-    from mem_monitor import MemoryMonitor
+    # from mem_monitor import MemoryMonitor
 
     import tensorrt_llm
     from tensorrt_llm.logger import logger
@@ -303,8 +303,8 @@ def main(args):
         torch.cuda.empty_cache()
         latencies = []
 
-        memory_monitor = MemoryMonitor()
-        memory_monitor.start()
+        # memory_monitor = MemoryMonitor()
+        # memory_monitor.start()
 
         iter_idx = 0
         try:
@@ -335,12 +335,13 @@ def main(args):
 
         except Exception as e:
             print("Found exception during benchmarking", e.with_traceback())
-            memory_monitor.kill()
+            # memory_monitor.kill()
             raise e
 
-        memory_monitor.stop()
-        _, peak_gpu_used = memory_monitor.get_peak_memory_usage("GiB")
-        peak_gpu_used = round(peak_gpu_used, 3)
+        # memory_monitor.stop()
+        # _, peak_gpu_used = memory_monitor.get_peak_memory_usage("GiB")
+        # peak_gpu_used = round(peak_gpu_used, 3)
+        peak_gpu_used = None
         if benchmark_profiler is not None:
             benchmark_profiler.add_aux_info('iter_count', iter_idx)
             benchmark_profiler.stop()

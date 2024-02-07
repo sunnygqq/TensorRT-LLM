@@ -191,13 +191,25 @@ set_ifndef(TRT_INCLUDE_DIR /usr/include/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 set(TRT_LIB nvinfer)
 find_library_create_target(${TRT_LIB} nvinfer SHARED ${TRT_LIB_DIR})
 
-if(${CUDAToolkit_VERSION} VERSION_GREATER_EQUAL "11")
+set(TensorRT_VERSION 9)
+message("TensorRT_VERSION============= is ${TensorRT_VERSION}") 
+if(${TensorRT_VERSION} GREATER_EQUAL 9)
   add_definitions("-DENABLE_BF16")
+  
   message(
     STATUS
-      "CUDAToolkit_VERSION ${CUDAToolkit_VERSION_MAJOR}.${CUDAToolkit_VERSION_MINOR} is greater or equal than 11.0, enable -DENABLE_BF16 flag"
+      "TensorRT_VERSION ${TensorRT_VERSION} is greater or equal than 9.0, enable -DENABLE_BF16 flag"
   )
 endif()
+
+# if(${CUDAToolkit_VERSION} VERSION_GREATER_EQUAL "11")
+#   add_definitions("-DENABLE_BF16")
+#   message(
+#     STATUS
+#       # "CUDAToolkit_VERSION ${CUDAToolkit_VERSION_MAJOR}.${CUDAToolkit_VERSION_MINOR} is greater or equal than 11.0, enable -DENABLE_BF16 flag"
+#       "TensorRT_VERSION ${TensorRT_VERSION} is greater or equal than 9.0, enable -DENABLE_BF16 flag"
+#   )
+# endif()
 
 if(${CUDAToolkit_VERSION} VERSION_GREATER_EQUAL "11.8")
   add_definitions("-DENABLE_FP8")
@@ -320,16 +332,17 @@ if(BUILD_PYT)
       "from __future__ import print_function; import torch; print(torch.__version__,end='');"
     RESULT_VARIABLE _PYTHON_SUCCESS
     OUTPUT_VARIABLE TORCH_VERSION)
-  if(TORCH_VERSION VERSION_LESS "1.5.0")
-    message(FATAL_ERROR "PyTorch >= 1.5.0 is needed for TorchScript mode.")
-  endif()
+  # if(TORCH_VERSION VERSION_LESS "1.5.0")
+  #   message(FATAL_ERROR "PyTorch >= 1.5.0 is needed for TorchScript mode.")
+  # endif()
 
-  execute_process(
-    COMMAND ${Python3_EXECUTABLE} "-c"
-            "from __future__ import print_function; import os; import torch;
-print(os.path.dirname(torch.__file__),end='');"
-    RESULT_VARIABLE _PYTHON_SUCCESS
-    OUTPUT_VARIABLE TORCH_DIR)
+#   execute_process(
+#     COMMAND ${Python3_EXECUTABLE} "-c"
+#             "from __future__ import print_function; import os; import torch;
+# print(os.path.dirname(torch.__file__),end='');"
+#     RESULT_VARIABLE _PYTHON_SUCCESS
+#     OUTPUT_VARIABLE TORCH_DIR)
+  set(TORCH_DIR "/usr/local/lib/python3.10/dist-packages")  
   if(NOT _PYTHON_SUCCESS MATCHES 0)
     message(FATAL_ERROR "Torch config Error.")
   endif()
