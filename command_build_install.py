@@ -8,14 +8,14 @@ args = parser.parse_args()
 if args.clean:
     print("Clean compile cache!!!")
     if args.TensorRT_path is None:
-        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '80', '-D', 'ENABLE_MULTI_DEVICE=0', '--clean']
+        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '87', '-D', 'ENABLE_MULTI_DEVICE=0', '--clean']
     else:
-        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '80', '-D', 'ENABLE_MULTI_DEVICE=0', '--trt_root', args.TensorRT_path, '--clean']
+        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '87', '-D', 'ENABLE_MULTI_DEVICE=0', '--trt_root', args.TensorRT_path, '--clean']
 else:
     if args.TensorRT_path is None:
-        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '80', '-D', 'ENABLE_MULTI_DEVICE=0']
+        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '87', '-D', 'ENABLE_MULTI_DEVICE=0']
     else:
-        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '80', '-D', 'ENABLE_MULTI_DEVICE=0', '--trt_root', args.TensorRT_path]
+        cmd1 = ['./scripts/build_wheel.py', '--cuda_architectures', '87', '-D', 'ENABLE_MULTI_DEVICE=0', '--trt_root', args.TensorRT_path]
 
     
 
