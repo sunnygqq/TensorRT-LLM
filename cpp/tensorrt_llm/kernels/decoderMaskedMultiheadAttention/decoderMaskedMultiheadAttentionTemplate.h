@@ -1260,6 +1260,8 @@ __global__ void masked_multihead_attention_kernel(
 #ifdef ENABLE_FP8
     // FP8 KV Cache.
     static constexpr bool FP8_KV_CACHE = std::is_same<Tcache, __nv_fp8_e4m3>::value;
+#else
+    static constexpr bool FP8_KV_CACHE = false;
 #endif
     // INT8 KV Cache.
     static constexpr bool INT8_KV_CACHE = std::is_same<Tcache, int8_t>::value;
@@ -2276,7 +2278,6 @@ __global__ void masked_multihead_attention_kernel(
     // The partial outputs computed by each thread.
     V_vec_accum out;
     zero(out);
-#ifdef ENABLE_FP8
     // Loop over the timesteps to compute the partial outputs.
     if (is_valid_vi)
     {
@@ -2356,7 +2357,7 @@ __global__ void masked_multihead_attention_kernel(
             }
         }
     }
-#endif
+
 
     // Make sure we can overwrite the v cache if using cyclic kv cache.
     __syncthreads();
