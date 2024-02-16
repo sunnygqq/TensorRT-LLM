@@ -342,7 +342,7 @@ if(BUILD_PYT)
 # print(os.path.dirname(torch.__file__),end='');"
 #     RESULT_VARIABLE _PYTHON_SUCCESS
 #     OUTPUT_VARIABLE TORCH_DIR)
-  set(TORCH_DIR "/usr/local/lib/python3.10/dist-packages")  
+  set(TORCH_DIR "/usr/local/lib/python3.10/dist-packages;/usr/local/lib/python3.8/dist-packages")  
   if(NOT _PYTHON_SUCCESS MATCHES 0)
     message(FATAL_ERROR "Torch config Error.")
   endif()

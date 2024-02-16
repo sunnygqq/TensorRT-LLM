@@ -1068,7 +1068,7 @@ void GptSession::CudaGraphExecutor::launch(CudaStream const& stream)
 bool GptSession::CudaGraphExecutor::update(cudaGraph_t const& graph)
 {
     TLLM_LOG_DEBUG("%s start", __PRETTY_FUNCTION__);
-    return cudaGraphExecUpdate(mInstance, graph, nullptr) != cudaSuccess;
+    return cudaGraphExecUpdate(mInstance, graph, nullptr,nullptr) != cudaSuccess;
 }
 
 void GptSession::CudaGraphExecutor::clear()
