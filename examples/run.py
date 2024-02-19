@@ -319,7 +319,7 @@ def main(args):
                          lora_dir=args.lora_dir,
                          rank=runtime_rank,
                          debug_mode=args.debug_mode,
-                         lora_ckpt_source=args.lora_ckpt_source)#debug_tensors_to_save=['layers.0.mlp_output',]
+                         lora_ckpt_source=args.lora_ckpt_source)
     if not args.use_py_session:
         runner_kwargs.update(
             max_batch_size=len(batch_input_ids),

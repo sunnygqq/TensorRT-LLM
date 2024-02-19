@@ -26,6 +26,3 @@ tensorrt_llm/bindings/*.pyi
 # Testing
 .coverage.*
 results_trt/
-*.log
-*.patch
-*.logs

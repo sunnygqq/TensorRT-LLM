@@ -106,7 +106,7 @@ def main(args):
         runner_cls = ModelRunner if args.use_py_session else ModelRunnerCpp
         runner_kwargs = dict(engine_dir=args.engine_dir,
                              rank=runtime_rank,
-                             debug_mode=args.debug_mode)#debug_tensors_to_save=['layers.0.mlp_output','layers.1.mlp_output','layers.2.mlp_output','input_ids'],
+                             debug_mode=args.debug_mode)
         if not args.use_py_session:
             runner_kwargs.update(
                 max_batch_size=max_batch_size,
@@ -379,7 +379,7 @@ def main(args):
         logger.info(f"\n Reference : {datapoint[dataset_output_key]}")
         logger.info(f"\n Output : {output}")
         logger.info("---------------------------------------------------------")
-    # return
+        
     # TODO: Add random_seed flag in gptj
     metric_tensorrt_llm = [evaluate.load("rouge") for _ in range(num_beams)]
     metric_hf = [evaluate.load("rouge") for _ in range(num_beams)]
@@ -547,7 +547,7 @@ if __name__ == '__main__':
         'The attention window size that controls the sliding window attention / cyclic kv cache behaviour'
     )
     parser.add_argument('--num_beams', type=int, default=1)
-    parser.add_argument('--temperature', type=float, default=0)
+    parser.add_argument('--temperature', type=float, default=1.0)
     parser.add_argument('--top_k', type=int, default=1)
     parser.add_argument('--top_p', type=float, default=0.0)
     parser.add_argument('--length_penalty', type=float, default=1.0)

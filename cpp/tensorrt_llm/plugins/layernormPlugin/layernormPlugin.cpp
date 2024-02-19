@@ -122,7 +122,6 @@ int LayernormPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const 
         float* output = reinterpret_cast<float*>(outputs[0]);
         invokeGeneralLayerNorm(output, input, weight, bias, mEps, m, n, stream, mUseDiffOfSquares);
     }
-#if defined(NV_TENSORRT_MAJOR) && NV_TENSORRT_MAJOR >= 9
 #ifdef ENABLE_BF16
     else if (mType == DataType::kBF16)
     {
@@ -132,7 +131,6 @@ int LayernormPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const 
         __nv_bfloat16* output = reinterpret_cast<__nv_bfloat16*>(outputs[0]);
         invokeGeneralLayerNorm(output, input, weight, bias, mEps, m, n, stream, mUseDiffOfSquares);
     }
-#endif
 #endif
     return 0;
 }

@@ -507,18 +507,6 @@ def build(rank, args):
             kv_dtype = str_dtype_to_trt('int8')
         elif args.quant_mode.has_fp8_kv_cache():
             kv_dtype = str_dtype_to_trt('fp8')
-        # check_gpt_mem_usage(
-        #     engine=engine,
-        #     kv_dtype=kv_dtype,
-        #     use_gpt_attention_plugin=args.use_gpt_attention_plugin,
-        #     paged_kv_cache=args.paged_kv_cache,
-        #     max_batch_size=args.max_batch_size,
-        #     max_beam_width=args.max_beam_width,
-        #     max_input_len=args.max_input_len,
-        #     max_output_len=args.max_output_len,
-        #     local_num_kv_heads=local_num_kv_heads,
-        #     head_size=args.n_embd / args.n_head,
-        #     num_layers=args.n_layer)
 
         if cur_rank == 0:
             # Use in-memory timing cache for multiple builder passes.

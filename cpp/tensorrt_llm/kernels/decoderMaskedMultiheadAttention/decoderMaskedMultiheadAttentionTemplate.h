@@ -2278,6 +2278,7 @@ __global__ void masked_multihead_attention_kernel(
     // The partial outputs computed by each thread.
     V_vec_accum out;
     zero(out);
+
     // Loop over the timesteps to compute the partial outputs.
     if (is_valid_vi)
     {
@@ -2357,7 +2358,6 @@ __global__ void masked_multihead_attention_kernel(
             }
         }
     }
-
 
     // Make sure we can overwrite the v cache if using cyclic kv cache.
     __syncthreads();
