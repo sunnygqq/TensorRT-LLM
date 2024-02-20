@@ -379,7 +379,7 @@ def main(args):
         logger.info(f"\n Reference : {datapoint[dataset_output_key]}")
         logger.info(f"\n Output : {output}")
         logger.info("---------------------------------------------------------")
-
+        
     # TODO: Add random_seed flag in gptj
     metric_tensorrt_llm = [evaluate.load("rouge") for _ in range(num_beams)]
     metric_hf = [evaluate.load("rouge") for _ in range(num_beams)]

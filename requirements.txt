@@ -11,9 +11,9 @@ numpy
 onnx>=1.12.0
 polygraphy
 sentencepiece>=0.1.99
-tensorrt==9.2.0.post12.dev5
 torch
-transformers==4.33.1
+transformers==4.36.2
 wheel
 optimum
 evaluate
+pynvml
