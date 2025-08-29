@@ -1,13 +1,12 @@
 import copy
 from dataclasses import dataclass, field
 from enum import IntEnum, auto
-from typing import List, Optional, Type
+from typing import List, Optional
 
 import torch
 
-from ..._utils import get_sm_version
-from ..attention_backend.trtllm import AttentionBackend, TrtllmAttention
 from ..pyexecutor.resource_manager import BaseResourceManager
+
 
 class SpeculativeDecodingMode(IntEnum):
     MTP = auto()
@@ -68,6 +67,7 @@ class SpeculativeDecodingMode(IntEnum):
     def has_draft_model(self):
         return self.is_eagle3() or self.is_draft_target()
     
+    
     def needs_kv_cache_recompute(self):
         """
         Whether the draft model needs to recompute the kv cache.
@@ -90,26 +90,17 @@ class SpeculativeDecodingMode(IntEnum):
         return self.is_eagle3() or self.is_draft_target() or self.is_ngram(
         ) or self.is_user_provided()
 
-    def extend_ctx(self, attention_backend: Type[AttentionBackend]):
-        """
-        If true, treat generation requests with draft tokens as
-        chunked context requests at the kernel level. Required for
-        any spec dec mode that uses the SpecExecutor.
-        """
-
-        if self.use_one_engine():
-            # 1-model has separate logic for handling draft tokens
-            return False
-
-        # The special XQA generation kernels only exist with the TRTLLM backend on blackwell.
-        return not issubclass(attention_backend,
-                              TrtllmAttention) or get_sm_version() != 100
-
-    def attention_need_spec_dec_mode(self, spec_resource_manager: Optional[BaseResourceManager]):
+    def attention_need_spec_dec_mode(self,
+                                     spec_resource_manager: BaseResourceManager,
+                                     is_draft_model: bool):
         """
         If true, the attention backend kernel needs to run in spec-dec mode (multi-token query mode).
         """
-        return self.is_eagle3_one_model() or (self.is_eagle3() and spec_resource_manager.is_first_draft)
+        return self.is_eagle3_one_model() or (
+            self.is_eagle3() and spec_resource_manager.is_first_draft) or (
+                self.is_eagle3() and not is_draft_model)
+        return self.is_eagle3_one_model() or (
+            self.is_eagle3() and spec_resource_manager.is_first_draft)
 
     @staticmethod
     def from_string(name: Optional[str]) -> "SpeculativeDecodingMode":
@@ -144,6 +135,8 @@ class SpecMetadata:
     seq_lens: Optional[List[int]] = None
     # The gather ids for logits.
     gather_ids: Optional[torch.Tensor] = None
+    # The number of accepted draft tokens for each request.
+    num_accepted_draft_tokens: Optional[torch.Tensor] = None
     # The number of tokens for speculative model/layer
     num_tokens: int = 0
     # The number of tokens for speculative model/layer of different rank
