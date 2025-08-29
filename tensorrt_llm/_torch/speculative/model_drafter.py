@@ -115,12 +115,6 @@ class ModelDrafter(Drafter):
             new_request.context_chunk_size = end_compute - begin_compute
         return new_request
 
-    def _create_generation_request(self, request: LlmRequest,
-                                   input_tokens: Any) -> LlmRequest:
-        """Create a generation request when no tokens were accepted."""
-        new_request = self._create_draft_request(request, input_tokens)
-        new_request.state = LlmRequestState.GENERATION_IN_PROGRESS
-        return new_request
 
     def _create_accepted_tokens_request(self, request: LlmRequest,
                                         input_tokens: Any,
@@ -129,10 +123,13 @@ class ModelDrafter(Drafter):
         Create a chunked context request for accepted tokens.
         Only applicable if the draft model needs to recompute KV cache for accepted tokens (e.g. eagle 3)
         """
+        #pad input_tokens to max_draft_tokens
+        input_tokens.extend(0 for _ in range(self.max_draft_tokens - num_accepted_tokens))
         new_request = self._create_draft_request(request, input_tokens)
-        new_request.context_chunk_size = num_accepted_tokens + 1
-        new_request.context_current_position = len(
-            input_tokens) - num_accepted_tokens - 1
+        new_request.state = LlmRequestState.GENERATION_IN_PROGRESS
+        new_request.py_num_accepted_draft_tokens = request.py_num_accepted_draft_tokens
+        new_request.py_is_first_draft = True
+        
         return new_request
 
     def _create_draft_request_for_request(
@@ -153,7 +150,7 @@ class ModelDrafter(Drafter):
 
         # No tokens accepted - generation request. This only applies to speculation algorithms
         # that need to recompute KV cache for accepted tokens like eagle3.
-        elif num_accepted_tokens == 0 or not self.spec_config.spec_dec_mode.needs_kv_cache_recompute(
+        elif not self.spec_config.spec_dec_mode.needs_kv_cache_recompute(
         ):
             return self._create_generation_request(request, input_tokens)
 
@@ -239,31 +236,18 @@ class ModelDrafter(Drafter):
             traceback.print_exc()
             raise e
 
-    def _should_disable_cuda_graph(
-            self, previous_batch: Optional[SampleState]) -> bool:
-        """Check if CUDA graph should be disabled for the current forward pass."""
-        if previous_batch is not None:
-            return False
-        if self.use_static_draft_loop:
-            return False
-        return self.spec_config.spec_dec_mode.needs_kv_cache_recompute()
-
     def _forward_draft_model(
             self,
             draft_batch: ScheduledRequests,
             resource_manager: ResourceManager,
             previous_batch: Optional[SampleState] = None) -> Dict[str, Any]:
         """Forward pass through the draft model."""
-        if self._should_disable_cuda_graph(previous_batch):
-            with self.draft_model_engine.no_cuda_graph():
-                outputs = self.draft_model_engine.forward(
-                    draft_batch, resource_manager)
-        else:
-            new_tensors_device = previous_batch.device if previous_batch else None
-            outputs = self.draft_model_engine.forward(
-                draft_batch,
-                resource_manager,
-                new_tensors_device=new_tensors_device)
+        
+        new_tensors_device = previous_batch.device if previous_batch else None
+        outputs = self.draft_model_engine.forward(
+            draft_batch,
+            resource_manager,
+            new_tensors_device=new_tensors_device)
 
         # Handle d2t data if available. Static drafting loops should incorporate d2t
         # in their implementations.
@@ -402,6 +386,8 @@ class ModelDrafter(Drafter):
             self._update_request_states(draft_batch)
 
             # Convert context requests to generation requests
+            for req in draft_batch.generation_requests:
+                req.py_is_first_draft = False
             draft_batch.generation_requests = draft_batch.context_requests + draft_batch.generation_requests
             draft_batch.context_requests = []
 
