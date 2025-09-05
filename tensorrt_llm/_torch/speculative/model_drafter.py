@@ -115,6 +115,13 @@ class ModelDrafter(Drafter):
             new_request.context_chunk_size = end_compute - begin_compute
         return new_request
 
+    def _create_generation_request(self, request: LlmRequest,
+                                   input_tokens: Any) -> LlmRequest:
+        """Create a generation request when no tokens were accepted."""
+        new_request = self._create_draft_request(request, input_tokens)
+        new_request.state = LlmRequestState.GENERATION_IN_PROGRESS
+        return new_request
+
     def _create_accepted_tokens_request(self, request: LlmRequest,
                                         input_tokens: Any,
                                         num_accepted_tokens: int) -> LlmRequest:
@@ -150,11 +157,9 @@ class ModelDrafter(Drafter):
 
         # No tokens accepted - generation request. This only applies to speculation algorithms
         # that need to recompute KV cache for accepted tokens like eagle3.
-        elif not self.spec_config.spec_dec_mode.needs_kv_cache_recompute(
-        ):
+        elif not self.spec_config.spec_dec_mode.needs_kv_cache_recompute():
             return self._create_generation_request(request, input_tokens)
 
-        # Tokens accepted - chunked context request
         else:
             return self._create_accepted_tokens_request(request, input_tokens,
                                                         num_accepted_tokens)

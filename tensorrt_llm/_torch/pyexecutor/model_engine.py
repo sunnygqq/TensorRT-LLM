@@ -47,16 +47,12 @@ from ..models.modeling_utils import (DecoderModelForCausalLM, MetaInitMode,
                                      timing)
 from ..modules.fused_moe.moe_load_balancer import (
     MoeLoadBalancer, MoeLoadBalancerIterContext, maybe_create_moe_load_balancer)
-<<<<<<< HEAD
 from ..speculative import (SpecMetadata, get_num_extra_kv_tokens,
                            get_spec_metadata,
                            update_spec_config_from_model_config)
 from ..speculative.drafting_loops import ChainDrafter
-from ..speculative.mtp import SampleStateTensorsMTP
-=======
-from ..speculative import SpecMetadata, get_spec_metadata
 from ..speculative.eagle3 import Eagle3ResourceManager
->>>>>>> 8c39300ec (target verification use generation request)
+from ..speculative.mtp import SampleStateTensorsMTP
 from ..utils import (get_model_extra_attrs,
                      set_per_request_piecewise_cuda_graph_flag,
                      set_torch_compiling, with_model_extra_attrs)
@@ -858,7 +854,8 @@ class PyTorchModelEngine(ModelEngine):
                                          new_tensors_device=None,
                                          resource_manager=resource_manager)
                         torch.cuda.synchronize()
-                    if self.is_draft_model and isinstance(spec_resource_manager, Eagle3ResourceManager):
+                    if self.is_draft_model and isinstance(
+                            spec_resource_manager, Eagle3ResourceManager):
                         if draft_len > 0:
                             spec_resource_manager.is_first_draft = True
                         else:
