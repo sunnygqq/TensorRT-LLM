@@ -105,7 +105,6 @@ def test_llama_eagle3(use_cuda_graph: bool, attn_backend: str,
         num_tokens = len(new_tokens)
 
     accept_rate = num_accepted / num_drafted
-    print(f"====Accept rate: {accept_rate}")
     assert accept_rate > 0.15
 
     # Output tests

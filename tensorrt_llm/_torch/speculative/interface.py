@@ -1,10 +1,11 @@
 import copy
 from dataclasses import dataclass, field
 from enum import IntEnum, auto
-from typing import List, Optional
+from typing import List, Optional, Type
 
 import torch
 
+from ..attention_backend.trtllm import AttentionBackend, TrtllmAttention
 from ..pyexecutor.resource_manager import BaseResourceManager
 
 
@@ -66,8 +67,7 @@ class SpeculativeDecodingMode(IntEnum):
 
     def has_draft_model(self):
         return self.is_eagle3() or self.is_draft_target()
-    
-    
+
     def needs_kv_cache_recompute(self):
         """
         Whether the draft model needs to recompute the kv cache.
@@ -75,6 +75,18 @@ class SpeculativeDecodingMode(IntEnum):
         the accepted draft tokens.
         """
         return self.is_eagle3()
+
+    def extend_ctx(self, attention_backend: Type[AttentionBackend]):
+        """
+        If true, treat generation requests with draft tokens as
+        chunked context requests at the kernel level. Required for
+        any spec dec mode that uses the SpecExecutor.
+        """
+
+        if self.use_one_engine():
+            # 1-model has separate logic for handling draft tokens
+            return False
+        return not issubclass(attention_backend, TrtllmAttention)
 
     def need_load_draft_weights(self):
         """
@@ -92,15 +104,16 @@ class SpeculativeDecodingMode(IntEnum):
 
     def attention_need_spec_dec_mode(self,
                                      spec_resource_manager: BaseResourceManager,
-                                     is_draft_model: bool):
+                                     is_draft_model: bool,
+                                     attention_backend: Type[AttentionBackend]):
         """
         If true, the attention backend kernel needs to run in spec-dec mode (multi-token query mode).
         """
+        is_trtllm_attention = issubclass(attention_backend, TrtllmAttention)
         return self.is_eagle3_one_model() or (
-            self.is_eagle3() and spec_resource_manager.is_first_draft) or (
-                self.is_eagle3() and not is_draft_model)
-        return self.is_eagle3_one_model() or (
-            self.is_eagle3() and spec_resource_manager.is_first_draft)
+            self.is_eagle3() and spec_resource_manager.is_first_draft
+            and is_trtllm_attention) or (self.is_eagle3() and not is_draft_model
+                                         and is_trtllm_attention)
 
     @staticmethod
     def from_string(name: Optional[str]) -> "SpeculativeDecodingMode":

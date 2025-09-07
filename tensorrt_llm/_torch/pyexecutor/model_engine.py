@@ -1415,7 +1415,14 @@ class PyTorchModelEngine(ModelEngine):
                 num_draft_tokens = get_draft_token_length(request)
                 past_seen_token_num = request.max_beam_num_tokens - 1
                 draft_lens.append(num_draft_tokens)
-                prompt_lengths.append(request.py_prompt_len)
+                if self.enable_spec_decode and spec_config.spec_dec_mode.extend_ctx(
+                        self.attn_backend):
+                    # We're treating the prompt lengths as context requests here, so
+                    # the the prompt lens should not include the cached tokens.
+                    prompt_lengths.append(1 + num_draft_tokens)
+                else:
+                    prompt_lengths.append(request.py_prompt_len)
+
                 sequence_lengths.append(1 + num_draft_tokens)
                 num_accepted_draft_tokens.append(num_draft_tokens)
                 gather_ids.extend(
@@ -1668,6 +1675,10 @@ class PyTorchModelEngine(ModelEngine):
         attn_metadata.request_ids = request_ids
         attn_metadata.prompt_lens = prompt_lengths
         attn_metadata.num_contexts = len(scheduled_requests.context_requests)
+
+        if self.enable_spec_decode and spec_config.spec_dec_mode.extend_ctx(
+                self.attn_backend):
+            attn_metadata.num_contexts += len(extend_requests)
 
         attn_metadata.kv_cache_params = KVCacheParams(
             use_cache=True,
@@ -2262,8 +2273,8 @@ class PyTorchModelEngine(ModelEngine):
             # attn_metadata now depends on spec_metadata since it determines the shape/content of spec_dec parameter Tensors
             attn_metadata.update_spec_dec_param(
                 spec_metadata.spec_dec_mode.attention_need_spec_dec_mode(
-                    spec_resource_manager,
-                    self.is_draft_model), spec_metadata.is_spec_dec_tree,
+                    spec_resource_manager, self.is_draft_model,
+                    self.attn_backend), spec_metadata.is_spec_dec_tree,
                 spec_metadata.is_spec_dec_dynamic_tree,
                 self.original_max_draft_len)
         else:

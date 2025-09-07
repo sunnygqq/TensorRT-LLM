@@ -8,6 +8,7 @@ import torch
 from tensorrt_llm._utils import nvtx_range
 from tensorrt_llm.logger import logger
 
+from ..attention_backend.trtllm import TrtllmAttention
 from ..pyexecutor.guided_decoder import GuidedDecoder
 from ..pyexecutor.handle_logits import HandleLogits
 from ..pyexecutor.llm_request import LlmRequest, LlmRequestState
@@ -129,6 +130,19 @@ class ModelDrafter(Drafter):
         Create a chunked context request for accepted tokens.
         Only applicable if the draft model needs to recompute KV cache for accepted tokens (e.g. eagle 3)
         """
+        new_request = self._create_draft_request(request, input_tokens)
+        new_request.context_chunk_size = num_accepted_tokens + 1
+        new_request.context_current_position = len(
+            input_tokens) - num_accepted_tokens - 1
+        return new_request
+
+    def _create_accepted_tokens_request_for_trtllm_attn(
+            self, request: LlmRequest, input_tokens: Any,
+            num_accepted_tokens: int) -> LlmRequest:
+        """
+        Create a chunked context request for accepted tokens.
+        Only applicable if the draft model needs to recompute KV cache for accepted tokens (e.g. eagle 3)
+        """
         #pad input_tokens to max_draft_tokens
         input_tokens.extend(
             0 for _ in range(self.max_draft_tokens - num_accepted_tokens))
@@ -154,10 +168,14 @@ class ModelDrafter(Drafter):
             # the newly decoded one - this is the convention for EAGLE 2 and 3.
             assert num_draft_tokens == 0
             return self._create_context_request(request, input_tokens)
+        elif issubclass(self.draft_model_engine.attn_backend, TrtllmAttention):
+            return self._create_accepted_tokens_request_for_trtllm_attn(
+                request, input_tokens, num_accepted_tokens)
 
         # No tokens accepted - generation request. This only applies to speculation algorithms
         # that need to recompute KV cache for accepted tokens like eagle3.
-        elif not self.spec_config.spec_dec_mode.needs_kv_cache_recompute():
+        elif num_accepted_tokens == 0 or not self.spec_config.spec_dec_mode.needs_kv_cache_recompute(
+        ):
             return self._create_generation_request(request, input_tokens)
 
         else:
@@ -241,18 +259,34 @@ class ModelDrafter(Drafter):
             traceback.print_exc()
             raise e
 
+    def _should_disable_cuda_graph(
+            self, previous_batch: Optional[SampleState]) -> bool:
+        """Check if CUDA graph should be disabled for the current forward pass."""
+        if previous_batch is not None:
+            return False
+        if self.use_static_draft_loop:
+            return False
+        if self.spec_config.spec_dec_mode.needs_kv_cache_recompute(
+        ) and issubclass(self.draft_model_engine.attn_backend, TrtllmAttention):
+            return False
+        return self.spec_config.spec_dec_mode.needs_kv_cache_recompute()
+
     def _forward_draft_model(
             self,
             draft_batch: ScheduledRequests,
             resource_manager: ResourceManager,
             previous_batch: Optional[SampleState] = None) -> Dict[str, Any]:
         """Forward pass through the draft model."""
-
-        new_tensors_device = previous_batch.device if previous_batch else None
-        outputs = self.draft_model_engine.forward(
-            draft_batch,
-            resource_manager,
-            new_tensors_device=new_tensors_device)
+        if self._should_disable_cuda_graph(previous_batch):
+            with self.draft_model_engine.no_cuda_graph():
+                outputs = self.draft_model_engine.forward(
+                    draft_batch, resource_manager)
+        else:
+            new_tensors_device = previous_batch.device if previous_batch else None
+            outputs = self.draft_model_engine.forward(
+                draft_batch,
+                resource_manager,
+                new_tensors_device=new_tensors_device)
 
         # Handle d2t data if available. Static drafting loops should incorporate d2t
         # in their implementations.
