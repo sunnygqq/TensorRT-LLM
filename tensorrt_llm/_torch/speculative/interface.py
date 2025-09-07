@@ -76,18 +76,6 @@ class SpeculativeDecodingMode(IntEnum):
         """
         return self.is_eagle3()
 
-    def extend_ctx(self, attention_backend: Type[AttentionBackend]):
-        """
-        If true, treat generation requests with draft tokens as
-        chunked context requests at the kernel level. Required for
-        any spec dec mode that uses the SpecExecutor.
-        """
-
-        if self.use_one_engine():
-            # 1-model has separate logic for handling draft tokens
-            return False
-        return not issubclass(attention_backend, TrtllmAttention)
-
     def need_load_draft_weights(self):
         """
         Whether the draft model and target model are in the same model engine,
@@ -101,6 +89,18 @@ class SpeculativeDecodingMode(IntEnum):
     def has_spec_drafter(self):
         return self.is_eagle3() or self.is_draft_target() or self.is_ngram(
         ) or self.is_user_provided()
+
+    def extend_ctx(self, attention_backend: Type[AttentionBackend]):
+        """
+        If true, treat generation requests with draft tokens as
+        chunked context requests at the kernel level. Required for
+        any spec dec mode that uses the SpecExecutor.
+        """
+
+        if self.use_one_engine():
+            # 1-model has separate logic for handling draft tokens
+            return False
+        return not issubclass(attention_backend, TrtllmAttention)
 
     def attention_need_spec_dec_mode(self,
                                      spec_resource_manager: BaseResourceManager,
