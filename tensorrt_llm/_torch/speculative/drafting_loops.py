@@ -22,6 +22,10 @@ def save_metadata_state(attn_metadata: AttentionMetadata,
                         spec_metadata: SpecMetadata) -> None:
     attn_metadata.prepare_for_spec_dec("_seq_lens", "_seq_lens_cuda")
     batch_size = attn_metadata.num_seqs
+    # Do not use prepare_for_spec_dec for this special field.
+    # TRTLLM attention uses views of this tensor internally and prepare_for_spec_dec
+    # creates a copy. If you write to the copy, TRTLLM attention won't see the updates.
+    kv_lens = attn_metadata.kv_lens_cuda[:batch_size].clone()
 
     if attn_metadata.is_cuda_graph:
         assert spec_metadata.is_cuda_graph
@@ -38,6 +42,8 @@ def save_metadata_state(attn_metadata: AttentionMetadata,
         yield
     finally:
         attn_metadata.restore_from_spec_dec()
+        attn_metadata.kv_lens_cuda[:batch_size].copy_(kv_lens)
+        attn_metadata.on_update()
         if attn_metadata.is_cuda_graph:
             spec_metadata.num_tokens = num_tokens
             if isinstance(spec_metadata, Eagle3SpecMetadata):
@@ -55,15 +61,30 @@ def save_metadata_state(attn_metadata: AttentionMetadata,
 
 def prepare_for_generation(attn_metadata: AttentionMetadata,
                            spec_metadata: SpecMetadata,
-                           last_tokens_idx: torch.Tensor) -> None:
+                           position_ids: torch.Tensor) -> torch.Tensor:
     batch_size = attn_metadata.num_seqs
+    # using attn_metadata.seq_lens_cuda[:batch_size] to get the max_draft_len + 1
+    attn_metadata.kv_lens_cuda[:
+                               batch_size] -= attn_metadata.seq_lens_cuda[:
+                                                                          batch_size] - spec_metadata.num_accepted_draft_tokens[:
+                                                                                                                                batch_size] - 1
+    attn_metadata.seq_lens_cuda[:
+                                batch_size] = spec_metadata.num_accepted_draft_tokens[:
+                                                                                      batch_size] + 1
+    last_tokens_idx = torch.cumsum(
+        attn_metadata.seq_lens_cuda, dim=0, dtype=torch.long) - 1
+    new_position_ids = position_ids[0, last_tokens_idx] + 1
+
     attn_metadata._seq_lens[:batch_size].fill_(1)
     attn_metadata._seq_lens_cuda[:batch_size].fill_(1)
     attn_metadata.on_update()
+
     attn_metadata.kv_lens_cuda[:batch_size] += 1
 
     attn_metadata.host_request_types[:attn_metadata.num_contexts].fill_(1)
     attn_metadata.num_contexts = 0
+    # the next inference of draft model will not use spec decoding and the number of input tokens is 1.
+    attn_metadata.use_spec_decoding = False
 
     spec_metadata.num_tokens = batch_size
 
@@ -81,6 +102,8 @@ def prepare_for_generation(attn_metadata: AttentionMetadata,
                 dtype=spec_metadata.hidden_states_write_indices.dtype,
                 device=spec_metadata.hidden_states_write_indices.device))
 
+    return new_position_ids
+
 
 class ChainDrafter(torch.nn.Module):
 
@@ -92,8 +115,8 @@ class ChainDrafter(torch.nn.Module):
         self.max_draft_len = max_draft_len
 
     def forward(self, input_ids: torch.Tensor, position_ids: torch.Tensor,
-                attn_metadata: AttentionMetadata,
-                spec_metadata: AttentionMetadata, **kwargs) -> None:
+                attn_metadata: AttentionMetadata, spec_metadata: SpecMetadata,
+                **kwargs) -> torch.Tensor:
 
         logits = self.draft_model.forward(input_ids=input_ids,
                                           position_ids=position_ids,
@@ -103,24 +126,12 @@ class ChainDrafter(torch.nn.Module):
         logits = logits[spec_metadata.gather_ids]
 
         new_draft_tokens = [self.sample(logits)]
-        batch_size = attn_metadata.num_seqs
-        attn_metadata.kv_lens_cuda[:
-                                   batch_size] -= attn_metadata.seq_lens_cuda[:
-                                                                              batch_size] - spec_metadata.num_accepted_draft_tokens[:
-                                                                                                                                    batch_size] - 1
-        attn_metadata.seq_lens_cuda[:
-                                    batch_size] = spec_metadata.num_accepted_draft_tokens[:
-                                                                                          batch_size] + 1
-
         with save_metadata_state(attn_metadata, spec_metadata):
             batch_size = attn_metadata.num_seqs
-            last_tokens_idx = torch.cumsum(
-                attn_metadata.seq_lens_cuda, dim=0, dtype=torch.long) - 1
-            new_position_ids = position_ids[0, last_tokens_idx] + 1
 
-            prepare_for_generation(attn_metadata, spec_metadata,
-                                   last_tokens_idx)
-            attn_metadata.use_spec_decoding = False
+            new_position_ids = prepare_for_generation(attn_metadata,
+                                                      spec_metadata,
+                                                      position_ids)
             for i in range(self.max_draft_len - 1):
                 logits = self.draft_model.forward(
                     input_ids=new_draft_tokens[-1],

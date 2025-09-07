@@ -203,9 +203,9 @@ class CUDAGraphRunner:
         graph = torch.cuda.CUDAGraph()
         with with_multi_stream(True), piecewise_cuda_graph(False):
             for _ in range(self.WARMUP_STEPS):
-                forward_fn(capture_inputs)
+                forward_fn(capture_inputs, key)
             with torch.cuda.graph(graph, pool=self.memory_pool):
-                output = forward_fn(capture_inputs)
+                output = forward_fn(capture_inputs, key)
 
         self.graphs[key] = graph
 
