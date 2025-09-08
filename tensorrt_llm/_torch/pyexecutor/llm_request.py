@@ -354,6 +354,7 @@ class LlmRequest(tensorrt_llm.bindings.internal.batch_manager.LlmRequest):
         # If the request is a draft request, target_seq_slot is the sequence slot ID of its target request.
         self.py_target_seq_slot = target_seq_slot
         self.use_draft_model = is_draft
+        # Whether the request is for the first forward of the draft model.
         self.py_is_first_draft = is_first_draft
 
         # TODO: remove this when use DynamicDecodeOp in pytorch flow.

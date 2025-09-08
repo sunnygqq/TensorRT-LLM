@@ -26,7 +26,7 @@ class CUDAGraphRunner:
 
     This unified class handles high-level orchestration (padding, eligibility)
     and low-level execution (capturing, resource management, replaying) for
-    multiple graphs, keyed by (batch size, draft_len).
+    multiple graphs, keyed by (batch size, draft_len, is_first_draft).
     """
     WARMUP_STEPS = 2
 
@@ -62,15 +62,11 @@ class CUDAGraphRunner:
         engine = self._get_engine()
         if engine.is_draft_model and spec_resource_manager is not None and isinstance(
                 spec_resource_manager, Eagle3ResourceManager):
-            if spec_resource_manager.is_first_draft:
-                draft_len = engine.original_max_draft_len
-            else:
-                draft_len = 0
+            draft_len = engine.original_max_draft_len if spec_resource_manager.is_first_draft else 0
             key = (batch_size, draft_len, spec_resource_manager.is_first_draft)
         else:
             draft_len = self.spec_config.max_draft_len if self.enable_spec_decode else 0
             key = (batch_size, draft_len, True)
-
         return key
 
     @property
@@ -208,7 +204,6 @@ class CUDAGraphRunner:
                 output = forward_fn(capture_inputs, key)
 
         self.graphs[key] = graph
-
         self.graph_outputs[key] = make_weak_ref(output)
         self.memory_pool = graph.pool()
 
