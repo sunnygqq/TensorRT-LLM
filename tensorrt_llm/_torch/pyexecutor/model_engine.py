@@ -832,7 +832,8 @@ class PyTorchModelEngine(ModelEngine):
                 # value. This will save on memory.
                 and self.spec_config.max_concurrency is not None):
             draft_lengths.append(0)
-        if self.is_spec_decode and self.is_draft_model:
+        if self.is_spec_decode and self.is_draft_model and spec_resource_manager is not None and isinstance(
+                spec_resource_manager, Eagle3ResourceManager):
             draft_lengths.append(self.original_max_draft_len)
 
         for bs in cuda_graph_batch_sizes:

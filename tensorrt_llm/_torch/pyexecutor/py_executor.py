@@ -44,7 +44,7 @@ from .handle_logits import HandleLogits
 from .kv_cache_connector import KvCacheConnectorManager
 from .kv_cache_transceiver import KvCacheTransceiver
 from .llm_request import (ExecutorRequest, LlmRequest, LlmRequestState,
-                          LlmResponse)
+                          LlmResponse, get_draft_token_length)
 from .model_engine import ModelEngine
 from .sampler import Sampler, SampleState, SampleStateTensors
 from .scheduler import RequestScheduler, ScheduledRequests
@@ -1855,7 +1855,8 @@ class PyExecutor:
                     new_active_requests.append(request)
                     continue
 
-            request.draft_tokens = request.py_draft_tokens
+            request.draft_tokens = request.py_draft_tokens if get_draft_token_length(
+                request) > 0 else []
             request.decoding_iter = request.py_decoding_iter
 
             if request.return_perf_metrics:

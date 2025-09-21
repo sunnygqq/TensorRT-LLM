@@ -234,8 +234,8 @@ class CUDAGraphRunner:
             "spec_metadata": initial_inputs.get("spec_metadata", None),
         }
 
-        def wrap_forward_fn(key: Tuple[int, int, int], forward_fn: Callable,
-                            capture_inputs: Dict[str, Any]):
+        def _wrap_forward_fn(key: Tuple[int, int, int], forward_fn: Callable,
+                             capture_inputs: Dict[str, Any]):
             engine = self._get_engine()
             # for the first inference of draft model, we need to set the use_spec_decoding to True when capture the graph for multiple runs.
             is_first_draft = key[2]
@@ -252,11 +252,11 @@ class CUDAGraphRunner:
         graph = torch.cuda.CUDAGraph()
         with with_multi_stream(True), piecewise_cuda_graph(False):
             for _ in range(self.WARMUP_STEPS):
-                wrap_forward_fn(key, forward_fn, capture_inputs)
+                _wrap_forward_fn(key, forward_fn, capture_inputs)
                 if postprocess_fn is not None:
                     postprocess_fn(capture_inputs)
             with torch.cuda.graph(graph, pool=self.memory_pool):
-                output = wrap_forward_fn(key, forward_fn, capture_inputs)
+                output = _wrap_forward_fn(key, forward_fn, capture_inputs)
             if postprocess_fn is not None:
                 postprocess_fn(capture_inputs)
 

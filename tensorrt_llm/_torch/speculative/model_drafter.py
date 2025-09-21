@@ -172,7 +172,8 @@ class ModelDrafter(Drafter):
 
         # For TRTLLM attention backend, we need to create a generation request for both no tokens accepted and tokens accepted
         elif issubclass(self.draft_model_engine.attn_backend,
-                        TrtllmAttention) and _get_allow_chain_drafter():
+                        TrtllmAttention) and _get_allow_chain_drafter(
+                        ) and self.spec_config.spec_dec_mode.is_eagle3():
             return self._create_accepted_tokens_request_for_trtllm_attn(
                 request, input_tokens, num_accepted_tokens)
 
