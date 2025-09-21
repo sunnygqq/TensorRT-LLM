@@ -42,9 +42,6 @@ class CUDAGraphRunner:
         self.max_supported_batch_size = engine._max_cuda_graph_batch_size
         self.max_beam_width = engine.max_beam_width
         self.spec_config = engine.spec_config
-        engine = self._get_engine()
-        self.max_possible_draft_len = (engine.original_max_draft_len
-                                       if self.enable_spec_decode else 0)
 
         self.graphs: Dict[Tuple[int, int, int], torch.cuda.CUDAGraph] = {}
         self.graph_outputs: Dict[Tuple[int, int, int],
@@ -90,6 +87,11 @@ class CUDAGraphRunner:
     @property
     def enable_spec_decode(self):
         return self._get_engine().enable_spec_decode
+
+    @property
+    def max_possible_draft_len(self):
+        engine = self._get_engine()
+        return (engine.original_max_draft_len if self.enable_spec_decode else 0)
 
     def get_graph_key(
             self,
